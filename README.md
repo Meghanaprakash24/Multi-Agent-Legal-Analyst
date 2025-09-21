@@ -1,4 +1,4 @@
-# <img src="image_4.jpg" alt="Multi Agent Legal Analyst Logo" width="65" height="65">Multi Agent Legal Analyst: Multi-Agent AI Data Analyst for Judicial Cases
+Multi Agent Legal Analyst: Multi-Agent AI Data Analyst for Judicial Cases
 
 
 
