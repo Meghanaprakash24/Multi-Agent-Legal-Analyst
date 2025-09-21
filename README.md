@@ -475,6 +475,3 @@ function Visualization() {
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-
-## Acknowledgements
-Special thanks to the contributors and open-source libraries that made this project possible.
