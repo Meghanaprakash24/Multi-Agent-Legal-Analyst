@@ -339,7 +339,7 @@ class Precedents(text):
 ## Frontend Overview:
 
 ## Overview
-The frontend of LAWGORYTHM serves as the user interface for interacting with the multi-agent AI system. It is designed to be user-friendly, responsive, and visually appealing, enabling lawyers and legal professionals to leverage the platform's features seamlessly. The frontend integrates with backend APIs to display petitions, case insights, and legal summaries dynamically.
+The frontend of this application serves as the user interface for interacting with the multi-agent AI system. It is designed to be user-friendly, responsive, and visually appealing, enabling lawyers and legal professionals to leverage the platform's features seamlessly. The frontend integrates with backend APIs to display petitions, case insights, and legal summaries dynamically.
 
 ---
 
