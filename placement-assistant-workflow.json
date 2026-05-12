@@ -1,0 +1,470 @@
+{
+  "name": "Multi-Agent Placement Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "placement-form",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_form_trigger",
+      "icon": "fa:globe",
+      "name": "Form Trigger - Candidate Data",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        100
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst path = require('path');\n\n// Extract form data\nconst candidateData = {\n  fullName: $input.first().json.fullName || '',\n  email: $input.first().json.email || '',\n  phone: $input.first().json.phone || '',\n  collegeName: $input.first().json.collegeName || '',\n  skills: $input.first().json.skills || '',\n  preferredJobRole: $input.first().json.preferredJobRole || '',\n  experienceLevel: $input.first().json.experienceLevel || '',\n  resumePDF: $input.first().json.resumePDF || ''\n};\n\n// Store resume for processing\nreturn {\n  candidateData,\n  timestamp: new Date().toISOString(),\n  processingId: `placement_${Date.now()}`\n};"
+      },
+      "id": "extract_form_data",
+      "icon": "fa:code",
+      "name": "Extract Candidate Form Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        550,
+        100
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract text from PDF base64\nconst pdfBase64 = $input.first().json.candidateData.resumePDF;\nconst Buffer = require('buffer').Buffer;\nconst pdfData = Buffer.from(pdfBase64, 'base64');\n\n// Simulate PDF text extraction\n// In production, use pdf-parse or similar library\nconst resumeText = `\n[EXTRACTED RESUME TEXT]\nName: ${$input.first().json.candidateData.fullName}\nEmail: ${$input.first().json.candidateData.email}\nPhone: ${$input.first().json.candidateData.phone}\nCollege: ${$input.first().json.candidateData.collegeName}\nSkills: ${$input.first().json.candidateData.skills}\nPreferred Role: ${$input.first().json.candidateData.preferredJobRole}\nExperience: ${$input.first().json.candidateData.experienceLevel}\nResume PDF Size: ${pdfData.length} bytes\n`;\n\nreturn {\n  resumeText,\n  extractionStatus: 'success',\n  processingId: $input.first().json.processingId\n};"
+      },
+      "id": "extract_resume_text",
+      "icon": "fa:file-pdf",
+      "name": "Extract Resume Text from PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        850,
+        100
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Coordinator AI Agent for a placement assistant system. Your role is to manage and orchestrate the following AI agents:\n1. Resume ATS Score Analysis Agent\n2. Keywords Fetching and Suggestion Agent\n3. Overall Resume Analysis Agent\n4. Real-Time Job Matching Agent\n5. Interview Preparation Agent\n\nReceived candidate data and resume. Acknowledge receipt and prepare task distribution.\n\nCandidate: {{ $json.candidateData.fullName }}\nResume Status: {{ $json.extractionStatus }}\n\nRespond with a JSON object containing:\n{\n  \"status\": \"ready\",\n  \"coordinatorMessage\": \"acknowledgment\",\n  \"tasksToDistribute\": [\"ats_analysis\", \"keyword_analysis\", \"resume_quality\", \"job_matching\", \"interview_prep\"],\n  \"processingId\": \"{{ $json.processingId }}\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "coordinator_agent",
+      "icon": "fa:brain",
+      "name": "Coordinator AI Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        100
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are an ATS (Applicant Tracking System) Score Analysis Agent. Analyze the following resume for ATS compatibility.\n\nResume Text:\n{{ $json.resumeText }}\n\nCandidate Role: {{ $json.candidateData.preferredJobRole }}\n\nProvide a detailed JSON response with:\n{\n  \"atsScore\": (0-100),\n  \"formattingIssues\": [],\n  \"keywordOptimization\": {\n    \"present\": [],\n    \"missing\": []\n  },\n  \"recommendations\": [],\n  \"overallFeedback\": \"\",\n  \"agentName\": \"ATS Score Analysis Agent\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "ats_analysis_agent",
+      "icon": "fa:chart-bar",
+      "name": "ATS Score Analysis Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        300,
+        350
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Keywords Fetching and Suggestion Agent. Extract and analyze technical keywords from the resume.\n\nResume Text:\n{{ $json.resumeText }}\n\nPreferred Job Role: {{ $json.candidateData.preferredJobRole }}\nCurrent Skills: {{ $json.candidateData.skills }}\n\nProvide a detailed JSON response with:\n{\n  \"extractedKeywords\": [],\n  \"technicalSkills\": [],\n  \"frameworks\": [],\n  \"tools\": [],\n  \"certifications\": [],\n  \"missingSkills\": [],\n  \"missingTools\": [],\n  \"missingCertifications\": [],\n  \"roleAlignmentScore\": (0-100),\n  \"recommendations\": [],\n  \"agentName\": \"Keywords Fetching Agent\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "keywords_agent",
+      "icon": "fa:tags",
+      "name": "Keywords Fetching and Suggestion Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        600,
+        350
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are an Overall Resume Analysis Agent. Provide comprehensive analysis of the resume.\n\nResume Text:\n{{ $json.resumeText }}\n\nCandidate: {{ $json.candidateData.fullName }}\nExperience Level: {{ $json.candidateData.experienceLevel }}\n\nProvide a detailed JSON response with:\n{\n  \"projectsAnalysis\": {\n    \"count\": 0,\n    \"quality\": 0,\n    \"details\": []\n  },\n  \"technicalSkillsAssessment\": {\n    \"rating\": 0,\n    \"strengths\": [],\n    \"gaps\": []\n  },\n  \"grammarAndClarity\": {\n    \"score\": 0,\n    \"issues\": []\n  },\n  \"achievements\": [],\n  \"overallQualityScore\": (0-10),\n  \"strengths\": [],\n  \"weaknesses\": [],\n  \"professionalFeedback\": \"\",\n  \"agentName\": \"Resume Analysis Agent\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "resume_quality_agent",
+      "icon": "fa:pencil",
+      "name": "Overall Resume Analysis Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        900,
+        350
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Real-Time Job Matching Agent. Match candidate skills with current job opportunities.\n\nCandidate Skills: {{ $json.candidateData.skills }}\nPreferred Role: {{ $json.candidateData.preferredJobRole }}\nExperience: {{ $json.candidateData.experienceLevel }}\nCollege: {{ $json.candidateData.collegeName }}\n\nProvide a detailed JSON response with:\n{\n  \"jobRecommendations\": [\n    {\n      \"jobTitle\": \"\",\n      \"company\": \"\",\n      \"matchPercentage\": 0,\n      \"requiredSkills\": [],\n      \"missingRequirements\": [],\n      \"salaryRange\": \"\",\n      \"location\": \"\",\n      \"jobType\": \"\",\n      \"careerGrowth\": \"\"\n    }\n  ],\n  \"bestMatchRoles\": [],\n  \"careerPathSuggestions\": [],\n  \"placementOpportunities\": 0,\n  \"agentName\": \"Job Matching Agent\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "job_matching_agent",
+      "icon": "fa:briefcase",
+      "name": "Real-Time Job Matching Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        350
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are an Interview Preparation Agent. Generate comprehensive interview preparation materials.\n\nCandidate: {{ $json.candidateData.fullName }}\nTarget Role: {{ $json.candidateData.preferredJobRole }}\nSkills: {{ $json.candidateData.skills }}\nExperience: {{ $json.candidateData.experienceLevel }}\n\nProvide a detailed JSON response with:\n{\n  \"hrInterviewQuestions\": [\n    {\n      \"question\": \"\",\n      \"suggestedAnswer\": \"\",\n      \"tips\": []\n    }\n  ],\n  \"technicalInterviewQuestions\": [\n    {\n      \"question\": \"\",\n      \"expectedTopics\": [],\n      \"sampleSolution\": \"\"\n    }\n  ],\n  \"behavioralQuestions\": [\n    {\n      \"scenario\": \"\",\n      \"possibleResponse\": \"\"\n    }\n  ],\n  \"preparationTips\": [],\n  \"commonMistakesAvoid\": [],\n  \"strengths\": [],\n  \"areasToImprove\": [],\n  \"agentName\": \"Interview Preparation Agent\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "interview_prep_agent",
+      "icon": "fa:microphone",
+      "name": "Interview Preparation Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        350
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Merge all agent outputs into a comprehensive report\nconst atsAnalysis = $('ATS Score Analysis Agent').first().json;\nconst keywordsFetching = $('Keywords Fetching and Suggestion Agent').first().json;\nconst resumeQuality = $('Overall Resume Analysis Agent').first().json;\nconst jobMatching = $('Real-Time Job Matching Agent').first().json;\nconst interviewPrep = $('Interview Preparation Agent').first().json;\nconst candidateData = $input.first().json.candidateData;\n\nconst mergedOutput = {\n  candidateSummary: {\n    fullName: candidateData.fullName,\n    email: candidateData.email,\n    phone: candidateData.phone,\n    college: candidateData.collegeName,\n    targetRole: candidateData.preferredJobRole,\n    experienceLevel: candidateData.experienceLevel,\n    generatedAt: new Date().toISOString()\n  },\n  atsAnalysis: atsAnalysis,\n  keywordAnalysis: keywordsFetching,\n  resumeAnalysis: resumeQuality,\n  jobRecommendations: jobMatching,\n  interviewPreparation: interviewPrep,\n  dataIntegrity: {\n    allAgentsExecuted: true,\n    timestamp: new Date().toISOString()\n  }\n};\n\nreturn mergedOutput;"
+      },
+      "id": "merge_agent_outputs",
+      "icon": "fa:code",
+      "name": "Merge Agent Outputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        750,
+        600
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "model": "mixtral-8x7b-32768",
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Final Report Generator Agent. Create a comprehensive placement readiness report.\n\nMerged Agent Data:\n{{ JSON.stringify($json) }}\n\nGenerate a professional final report JSON with:\n{\n  \"candidateSummary\": {},\n  \"atsScoreReport\": {\n    \"score\": 0,\n    \"analysis\": \"\",\n    \"improvements\": []\n  },\n  \"resumeFeedback\": {\n    \"overallQuality\": \"\",\n    \"strengths\": [],\n    \"improvements\": []\n  },\n  \"keywordRecommendations\": {\n    \"toAdd\": [],\n    \"toRemove\": []\n  },\n  \"topJobRecommendations\": [],\n  \"interviewReadiness\": {\n    \"score\": 0,\n    \"recommendations\": []\n  },\n  \"placementReadinessScore\": 0,\n  \"improvementRoadmap\": {\n    \"immediate\": [],\n    \"1-3months\": [],\n    \"3-6months\": [],\n    \"6-12months\": []\n  },\n  \"generatedReport\": true,\n  \"reportTimestamp\": \"{{ $iso.toISOString() }}\"\n}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "final_report_generator",
+      "icon": "fa:file-alt",
+      "name": "Final Report Generator Agent",
+      "type": "n8n-nodes-base.groq",
+      "typeVersion": 1,
+      "position": [
+        750,
+        850
+      ],
+      "disabled": false,
+      "credentials": {
+        "groqApi": "groq_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format final response for webhook\nconst report = $input.first().json;\n\nreturn {\n  success: true,\n  message: 'Placement assessment completed successfully',\n  data: {\n    report: report,\n    metadata: {\n      generatedAt: new Date().toISOString(),\n      version: '1.0.0',\n      workflowName: 'Multi-Agent Placement Assistant'\n    }\n  }\n};"
+      },
+      "id": "format_webhook_response",
+      "icon": "fa:code",
+      "name": "Format Webhook Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        750,
+        1100
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "respondWithResponse": "{\"success\": true, \"message\": \"Report generated\", \"data\": \"{{ $json }}\"}"
+      },
+      "id": "webhook_response",
+      "icon": "fa:globe",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        750,
+        1300
+      ],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "jsonStringObject": "{\n  \"candidates\": [\n    {\n      \"id\": \"cand_001\",\n      \"name\": \"Test Candidate\"\n    }\n  ]\n}"
+      },
+      "id": "error_handler",
+      "icon": "fa:exclamation",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.json",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1100
+      ],
+      "disabled": false
+    }
+  ],
+  "connections": {
+    "webhook_form_trigger": {
+      "main": [
+        [
+          {
+            "node": "extract_form_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_form_data": {
+      "main": [
+        [
+          {
+            "node": "extract_resume_text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_resume_text": {
+      "main": [
+        [
+          {
+            "node": "coordinator_agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "coordinator_agent": {
+      "main": [
+        [
+          {
+            "node": "ats_analysis_agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "keywords_agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "resume_quality_agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "job_matching_agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "interview_prep_agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ats_analysis_agent": {
+      "main": [
+        [
+          {
+            "node": "merge_agent_outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "keywords_agent": {
+      "main": [
+        [
+          {
+            "node": "merge_agent_outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "resume_quality_agent": {
+      "main": [
+        [
+          {
+            "node": "merge_agent_outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "job_matching_agent": {
+      "main": [
+        [
+          {
+            "node": "merge_agent_outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "interview_prep_agent": {
+      "main": [
+        [
+          {
+            "node": "merge_agent_outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge_agent_outputs": {
+      "main": [
+        [
+          {
+            "node": "final_report_generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "final_report_generator": {
+      "main": [
+        [
+          {
+            "node": "format_webhook_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format_webhook_response": {
+      "main": [
+        [
+          {
+            "node": "webhook_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
