@@ -1,4 +1,4 @@
-# <img src="image_4.jpg" alt="Multi Agent Legal Analyst Logo" width="65" height="65"> Multi-Agent AI for Legal Intelligence
+ Multi-Agent AI for Legal Intelligence
 
 ## Overview
 Multi-Agent AI for Legal Intelligence is a smart, AI-driven platform designed to simplify and streamline the analysis of judicial cases. The system integrates multiple intelligent modules that work collaboratively to assist legal professionals in processing legal documents, extracting insights, and automating petition drafting.
